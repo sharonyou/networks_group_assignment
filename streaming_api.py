@@ -1,5 +1,6 @@
 import tweepy
 import json
+from models import Retweet, Reply, Mention, Hashtag
 
 #https://dev.twitter.com/streaming/overview/request-parameters
 #specify these parameters as key word arguments to Tweepy
@@ -11,27 +12,45 @@ class TrumpTwitterAnalyzer:
         """
         hashtags =  json_data['entities']['hashtags']
         retweeted_status = json_data['retweeted_status']
+        self._store_hashtags(json_data)
+
+        Retweet(
+                activity_type='retweet',
+                status_id_of_retweeted_tweet=retweeted_status['id_str'],
+                user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
+                location=json_data['user']['location'],
+                timestamp_ms=json_data['timestamp_ms'],
+            ).save()
         return {
-            'activity_type': 'retweet',
-            'hashtags': hashtags if hashtags else None,
-            'status_id_of_retweeted_tweet': retweeted_status['id_str'],
-            'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
-            'location': json_data['user']['location'],
-            'timestamp_ms': json_data['timestamp_ms'],
-        }
+                'activity_type': 'retweet',
+                'hashtags': hashtags if hashtags else None,
+                'status_id_of_retweeted_tweet': retweeted_status['id_str'],
+                'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
+                'location': json_data['user']['location'],
+                'timestamp_ms': json_data['timestamp_ms'],
+            }
 
     def replies_to_trump_statuses(self, json_data):
         """Logs all replies to Trump's statuses.
 
         """
         hashtags = json_data['entities']['hashtags']
+        self._store_hashtags(json_data)
+
+        Reply(
+                activity_type='reply',
+                in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
+                user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
+                location=json_data['user']['location'],
+                timestamp_ms=json_data['timestamp_ms']
+        ).save()
         return {
-            'activity_type': 'reply',
-            'in_reply_to_status_id_str': json_data['in_reply_to_status_id_str'],
-            'hashtags': hashtags if hashtags else None,
-            'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
-            'location': json_data['user']['location'],
-            'timestamp_ms': json_data['timestamp_ms'],
+           'activity_type': 'reply',
+           'in_reply_to_status_id_str': json_data['in_reply_to_status_id_str'],
+           'hashtags': hashtags if hashtags else None,
+           'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
+           'location': json_data['user']['location'],
+           'timestamp_ms': json_data['timestamp_ms'],
         }
 
     def mentions_of_trump(self, json_data):
@@ -39,19 +58,32 @@ class TrumpTwitterAnalyzer:
 
         """
         hashtags = json_data['entities']['hashtags']
+        self._store_hashtags(json_data)
+        
+        Mention(
+                activity_type='mention',
+                user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
+                location=json_data['user']['location'],
+                timestamp_ms=json_data['timestamp_ms'],
+        ).save()
         return {
-            'activity_type': 'mention',
-            'hashtags': hashtags if hashtags else None,
-            'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
-            'location': json_data['user']['location'],
-            'timestamp_ms': json_data['timestamp_ms'],
+                'activity_type': 'mention',
+                'hashtags': hashtags if hashtags else None,
+                'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
+                'location': json_data['user']['location'],
+                'timestamp_ms': json_data['timestamp_ms'],
         }
+
+    def _store_hashtags(self, json_data):
+        pass
 
 class TwitterStreamListener(tweepy.StreamListener):
 
     def __init__(self, trump_twitter_analyzer, *args, **kwargs):
         self.trump_twitter_analyzer = trump_twitter_analyzer
         super().__init__(*args, **kwargs)
+
+    
 
     def on_data(self, data):
         json_data = json.loads(data)
@@ -86,6 +118,15 @@ if __name__ == '__main__':
     consumer_secret = "kcOhiBG3nL3Hl9IgfdVC62QMYkmt7Fs1kdYqgaeyUqfWudwXrI"
     access_token = "804836955485859841-BGEwCIwrvSCZmW9YE7mbvAl6ni2WOi3"
     access_token_secret = "1V6apviXNqtYyS2hIc4FqIgtep09AMvbDBIsEXfG9ZQal"
+
+    try:
+        Reply.create_table()
+        Mention.create_table()
+        Retweet.create_table()
+        Hashtag.create_table()
+        print("New tables made")
+    except:
+        print("Table/s already exist")
 
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
