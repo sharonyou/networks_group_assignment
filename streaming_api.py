@@ -59,25 +59,21 @@ class TrumpTwitterAnalyzer:
         """
         hashtags = json_data['entities']['hashtags']
         is_retweet = json_data.get('retweeted_status', False)
-        if is_retweet:
-            is_retweet = True
+        if not is_retweet:
+            s = TrumpStatus.create(
+                    status_id=json_data['id_str'],
+                    created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                    text=json_data['text']
+                )
+            self._store_hashtags(s, hashtags)
 
-        s = TrumpStatus.create(
-                status_id=json_data['id_str'],
-                created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-                text=json_data['text'],
-                is_retweet=is_retweet
-            )
-        self._store_hashtags(s, hashtags)
-
-        return {
-           'activity_type': 'status',
-           'status_id': json_data['id_str'],
-           'hashtags': hashtags if hashtags else None,
-           'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-           'is_retweet': is_retweet,
-           'text': json_data['text']
-        }
+            return {
+               'activity_type': 'status',
+               'status_id': json_data['id_str'],
+               'hashtags': hashtags if hashtags else None,
+               'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+               'text': json_data['text']
+            }
 
     def query(self):
         pass

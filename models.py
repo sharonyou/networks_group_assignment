@@ -24,7 +24,6 @@ class Reply(Model):
 class TrumpStatus(Model):
     status_id = CharField()
     text = CharField()
-    is_retweet = BooleanField()
     created_at = DateTimeField(default=datetime.datetime.now)
 
     class Meta:
