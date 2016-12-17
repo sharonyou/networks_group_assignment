@@ -1,12 +1,12 @@
 import tweepy
 import json
-from models import Retweet, Reply, Hashtag
+import datetime
+from models import Retweet, Reply, Hashtag, TrumpStatus
 
 #https://dev.twitter.com/streaming/overview/request-parameters
 #specify these parameters as key word arguments to Tweepy
 
 class TrumpTwitterAnalyzer:
-
     def retweets_of_trump_data(self, json_data):
         """Logs all retweets of Trump's statuses.
 
@@ -17,7 +17,7 @@ class TrumpTwitterAnalyzer:
                 status_id_of_retweeted_tweet=retweeted_status['id_str'],
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
-                timestamp_ms=json_data['timestamp_ms'],
+                created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
             )
         self._store_hashtags(rt, hashtags)
 
@@ -27,7 +27,7 @@ class TrumpTwitterAnalyzer:
                 'status_id_of_retweeted_tweet': retweeted_status['id_str'],
                 'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
                 'location': json_data['user']['location'],
-                'timestamp_ms': json_data['timestamp_ms'],
+                'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
             }
 
     def replies_to_trump_statuses(self, json_data):
@@ -40,7 +40,7 @@ class TrumpTwitterAnalyzer:
                 in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
-                timestamp_ms=json_data['timestamp_ms']
+                created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
             )
         self._store_hashtags(r, hashtags)
 
@@ -50,7 +50,33 @@ class TrumpTwitterAnalyzer:
            'hashtags': hashtags if hashtags else None,
            'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
            'location': json_data['user']['location'],
-           'timestamp_ms': json_data['timestamp_ms'],
+           'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+        }
+
+    def trump_statuses(self, json_data):
+        """Logs all trump statuses.
+
+        """
+        hashtags = json_data['entities']['hashtags']
+        is_retweet = json_data.get('retweeted_status', False)
+        if is_retweet:
+            is_retweet = True
+
+        s = TrumpStatus.create(
+                status_id=json_data['id_str'],
+                created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                text=json_data['text'],
+                is_retweet=is_retweet
+            )
+        self._store_hashtags(s, hashtags)
+
+        return {
+           'activity_type': 'status',
+           'status_id': json_data['id_str'],
+           'hashtags': hashtags if hashtags else None,
+           'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+           'is_retweet': is_retweet,
+           'text': json_data['text']
         }
 
     def query(self):
@@ -65,6 +91,8 @@ class TrumpTwitterAnalyzer:
             h = Hashtag()
             if model_instance.__class__.__name__ == "Reply":
                 h.reply = model_instance
+            elif model_instance.__class__.__name__ == "TrumpStatus":
+                h.trump_status = model_instance
             else:
                 h.retweet = model_instance
 
@@ -80,14 +108,19 @@ class TwitterStreamListener(tweepy.StreamListener):
     def on_data(self, data):
         json_data = json.loads(data)
 
-        is_retweet = json_data.get('retweeted_status', False)
-
-        if is_retweet:
-            retweet = self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
-            print("Retweet: ", retweet)
+        trump_twitter_id = "25073877"
+        is_trump_activity = json_data['user']['id_str'] == trump_twitter_id
+        if is_trump_activity:
+            self.trump_twitter_analyzer.trump_statuses(json_data)
         else:
-            reply = self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
-            print("Reply: ", reply)
+            is_retweet = json_data.get('retweeted_status', False)
+            if is_retweet:
+                self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
+            else:
+                self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
+
+    def on_error(self, status_code):
+        print('Got an error with status code: ' + str(status_code))
 
 if __name__ == '__main__':
     consumer_key = "zaQml4DgkhjmCLhJ5KC90jeuM"
@@ -99,6 +132,7 @@ if __name__ == '__main__':
         Reply.create_table()
         Retweet.create_table()
         Hashtag.create_table()
+        TrumpStatus.create_table()
         print("New tables made")
     except:
         print("Table/s already exist")

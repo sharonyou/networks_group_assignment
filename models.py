@@ -1,3 +1,4 @@
+import datetime
 from peewee import *
 
 db = SqliteDatabase("trump.db")
@@ -6,7 +7,7 @@ class Retweet(Model):
     status_id_of_retweeted_tweet = CharField()
     user_id = CharField()
     location = CharField(null=True)
-    timestamp_ms = CharField()
+    created_at = DateTimeField(default=datetime.datetime.now)
 
     class Meta:
         database = db
@@ -15,19 +16,28 @@ class Reply(Model):
     in_reply_to_status_id_str = CharField(null=True)
     user_id = CharField()
     location = CharField(null=True)
-    timestamp_ms = CharField()
+    created_at = DateTimeField(default=datetime.datetime.now)
     
     class Meta:
         database = db
 
+class TrumpStatus(Model):
+    status_id = CharField()
+    text = CharField()
+    is_retweet = BooleanField()
+    created_at = DateTimeField(default=datetime.datetime.now)
+
+    class Meta:
+        database = db
+
 class Hashtag(Model):
+    trump_status = ForeignKeyField(TrumpStatus, null=True, related_name="hashtags")
     retweet = ForeignKeyField(Retweet, null=True, related_name="hashtags")
     reply = ForeignKeyField(Reply, null=True, related_name="hashtags")
     hashtag = CharField()
 
     class Meta:
         database = db
-
 
 def populate_test_data():
 
@@ -36,14 +46,14 @@ def populate_test_data():
               in_reply_to_status_id_str="reply status_id: " + str(i),
               user_id = "user_id: " + str(i),
               location = "location: " + str(i),
-              timestamp_ms = "time: " + str(i))
+              created_at =datetime.datetime.now())
 
 
         rt = Retweet(
                  status_id_of_retweeted_tweet = "status_id " + str(i),
                  user_id = "user_id: " + str(i),
                  location = "location: " + str(i),
-                 timestamp_ms = "timestamp_ms: " + str(i))
+                 created_at =datetime.datetime.now())
 
         r.save()
         rt.save()
