@@ -1,26 +1,25 @@
 import tweepy
 import json
-from models import Retweet, Reply, Mention, Hashtag
+from models import Retweet, Reply, Hashtag
 
 #https://dev.twitter.com/streaming/overview/request-parameters
 #specify these parameters as key word arguments to Tweepy
 
 class TrumpTwitterAnalyzer:
+
     def retweets_of_trump_data(self, json_data):
         """Logs all retweets of Trump's statuses.
 
         """
         hashtags =  json_data['entities']['hashtags']
         retweeted_status = json_data['retweeted_status']
-        # import pdb; pdb.set_trace()
-        r = Retweet.create(
-                activity_type='retweet',
+        rt = Retweet.create(
                 status_id_of_retweeted_tweet=retweeted_status['id_str'],
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
                 timestamp_ms=json_data['timestamp_ms'],
-        )
-        self._store_hashtags(r, hashtags)
+            )
+        self._store_hashtags(rt, hashtags)
 
         return {
                 'activity_type': 'retweet',
@@ -38,7 +37,6 @@ class TrumpTwitterAnalyzer:
         hashtags = json_data['entities']['hashtags']
 
         r = Reply.create(
-                activity_type='reply',
                 in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
@@ -55,44 +53,23 @@ class TrumpTwitterAnalyzer:
            'timestamp_ms': json_data['timestamp_ms'],
         }
 
-    def mentions_of_trump(self, json_data):
-        """Logs all mentions of Trump that are not replies to his statuses.
-
-        """
-        hashtags = json_data['entities']['hashtags']
-        
-        m = Mention.create(
-                activity_type='mention',
-                user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
-                location=json_data['user']['location'],
-                timestamp_ms=json_data['timestamp_ms'],
-        )
-        self._store_hashtags(m, hashtags)
-        return {
-                'activity_type': 'mention',
-                'hashtags': hashtags if hashtags else None,
-                'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
-                'location': json_data['user']['location'],
-                'timestamp_ms': json_data['timestamp_ms'],
-        }
+    def query(self):
+        pass
+        # Example query with the reverse foreign key
+        # import models
+        # m = models.Retweet.select().join(models.Hashtag).where(models.Hashtag.hashtag=="BackstabberHannity")
 
     def _store_hashtags(self, model_instance, hashtags):
 
         for hashtag in hashtags:
-            print("HAPPENED")
             h = Hashtag()
             if model_instance.__class__.__name__ == "Reply":
                 h.reply = model_instance
-                print("REPLY: ", model_instance.__class__.__name__)
-            elif model_instance.__class__.__name__ == "Retweet":
-                h.retweet = model_instance
-                print("RETWEET: ", model_instance.__class__.__name__)
             else:
-                h.mention = model_instance
-                print("MENTION: ", model_instance.__class__.__name__)
+                h.retweet = model_instance
 
             h.hashtag = hashtag['text']
-            print("H save val: ", h.save())
+            h.save()
 
 class TwitterStreamListener(tweepy.StreamListener):
 
@@ -100,35 +77,17 @@ class TwitterStreamListener(tweepy.StreamListener):
         self.trump_twitter_analyzer = trump_twitter_analyzer
         super().__init__(*args, **kwargs)
 
-    
-
     def on_data(self, data):
         json_data = json.loads(data)
 
-        trump_twitter_id = "25073877"
-        in_reply_to_status_id_str = json_data['in_reply_to_status_id_str']
-        in_reply_to_user_id_str = json_data['in_reply_to_user_id_str']
-        is_reply = in_reply_to_user_id_str == trump_twitter_id and in_reply_to_status_id_str
-
         is_retweet = json_data.get('retweeted_status', False)
 
-        is_mention = False
-        for user in json_data['entities']['user_mentions']:
-            if user['id_str'] == trump_twitter_id:
-                is_mention = True
-                break
-
-        retweet = reply = mention = None
         if is_retweet:
             retweet = self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
-            print(retweet)
-        elif is_reply:
+            print("Retweet: ", retweet)
+        else:
             reply = self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
-            print(reply)
-        #is_mention must be last to avoid catching all the replies
-        elif is_mention:
-            mention = self.trump_twitter_analyzer.mentions_of_trump(json_data)
-            print(mention)
+            print("Reply: ", reply)
 
 if __name__ == '__main__':
     consumer_key = "zaQml4DgkhjmCLhJ5KC90jeuM"
@@ -138,7 +97,6 @@ if __name__ == '__main__':
 
     try:
         Reply.create_table()
-        Mention.create_table()
         Retweet.create_table()
         Hashtag.create_table()
         print("New tables made")
