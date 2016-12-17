@@ -119,10 +119,7 @@ class TwitterStreamListener(tweepy.StreamListener):
         print('Got an error with status code: ' + str(status_code))
 
 if __name__ == '__main__':
-    consumer_key = "zaQml4DgkhjmCLhJ5KC90jeuM"
-    consumer_secret = "kcOhiBG3nL3Hl9IgfdVC62QMYkmt7Fs1kdYqgaeyUqfWudwXrI"
-    access_token = "804836955485859841-BGEwCIwrvSCZmW9YE7mbvAl6ni2WOi3"
-    access_token_secret = "1V6apviXNqtYyS2hIc4FqIgtep09AMvbDBIsEXfG9ZQal"
+    from keys import *
 
     try:
         Reply.create_table()
@@ -133,8 +130,8 @@ if __name__ == '__main__':
     except:
         print("Table/s already exist")
 
-    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-    auth.set_access_token(access_token, access_token_secret)
+    auth = tweepy.OAuthHandler(twitter_consumer_key, twitter_consumer_secret)
+    auth.set_access_token(twitter_access_token, twitter_access_token_secret)
     tweepy_api = tweepy.API(auth)
 
     TwitterStreamListener = TwitterStreamListener(TrumpTwitterAnalyzer())
