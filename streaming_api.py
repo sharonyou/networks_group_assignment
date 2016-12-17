@@ -12,15 +12,16 @@ class TrumpTwitterAnalyzer:
         """
         hashtags =  json_data['entities']['hashtags']
         retweeted_status = json_data['retweeted_status']
-        self._store_hashtags(json_data)
-
-        Retweet(
+        # import pdb; pdb.set_trace()
+        r = Retweet.create(
                 activity_type='retweet',
                 status_id_of_retweeted_tweet=retweeted_status['id_str'],
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
                 timestamp_ms=json_data['timestamp_ms'],
-            ).save()
+        )
+        self._store_hashtags(r, hashtags)
+
         return {
                 'activity_type': 'retweet',
                 'hashtags': hashtags if hashtags else None,
@@ -35,15 +36,16 @@ class TrumpTwitterAnalyzer:
 
         """
         hashtags = json_data['entities']['hashtags']
-        self._store_hashtags(json_data)
 
-        Reply(
+        r = Reply.create(
                 activity_type='reply',
                 in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
                 timestamp_ms=json_data['timestamp_ms']
-        ).save()
+            )
+        self._store_hashtags(r, hashtags)
+
         return {
            'activity_type': 'reply',
            'in_reply_to_status_id_str': json_data['in_reply_to_status_id_str'],
@@ -58,14 +60,14 @@ class TrumpTwitterAnalyzer:
 
         """
         hashtags = json_data['entities']['hashtags']
-        self._store_hashtags(json_data)
         
-        Mention(
+        m = Mention.create(
                 activity_type='mention',
                 user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                 location=json_data['user']['location'],
                 timestamp_ms=json_data['timestamp_ms'],
-        ).save()
+        )
+        self._store_hashtags(m, hashtags)
         return {
                 'activity_type': 'mention',
                 'hashtags': hashtags if hashtags else None,
@@ -74,8 +76,23 @@ class TrumpTwitterAnalyzer:
                 'timestamp_ms': json_data['timestamp_ms'],
         }
 
-    def _store_hashtags(self, json_data):
-        pass
+    def _store_hashtags(self, model_instance, hashtags):
+
+        for hashtag in hashtags:
+            print("HAPPENED")
+            h = Hashtag()
+            if model_instance.__class__.__name__ == "Reply":
+                h.reply = model_instance
+                print("REPLY: ", model_instance.__class__.__name__)
+            elif model_instance.__class__.__name__ == "Retweet":
+                h.retweet = model_instance
+                print("RETWEET: ", model_instance.__class__.__name__)
+            else:
+                h.mention = model_instance
+                print("MENTION: ", model_instance.__class__.__name__)
+
+            h.hashtag = hashtag['text']
+            print("H save val: ", h.save())
 
 class TwitterStreamListener(tweepy.StreamListener):
 
