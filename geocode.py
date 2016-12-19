@@ -1,6 +1,7 @@
 import googlemaps
 from keys import *
 
+# we get up to 5 thousand calls
 locations = ['Right beside you. ', 'Moline, IL', 'Port Huron Michigan', 'Southern California', 'new joke city', 'Santa Rosa, Ca', 'Sunny CA', 'Marbella Andalucia Spain', 'Wyoming, MI', 'Little Rock, AR', 'los angeles', 'Saint Louis area', 'Misfit Toys Island', 'Brooklyn, NY', 'Hello, hello...here we go ', 'Jacksonville FL', 'Omaha, NE', 'new joke city', 'United States', 'Ventura CA', 'United States', 'Myrtle Beach', 'Saint Louis area', 'San Diego, CA', 'New York City,US/Heidelberg,DE', 'world Wide Web']
 
 gmaps = googlemaps.Client(key=geocode_api_key)
