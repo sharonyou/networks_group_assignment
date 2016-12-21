@@ -13,69 +13,78 @@ class TrumpTwitterAnalyzer:
         """Logs all retweets of Trump's statuses.
 
         """
-        hashtags =  json_data['entities']['hashtags']
-        retweeted_status = json_data['retweeted_status']
-        rt = Retweet.create(
-                status_id_of_retweeted_tweet=retweeted_status['id_str'],
-                user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
-                location=json_data['user']['location'],
-                created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-            )
-        self._store_hashtags(rt, hashtags)
+        try:
+            hashtags = json_data['entities']['hashtags']
+            retweeted_status = json_data['retweeted_status']
+            rt = Retweet.create(
+                    status_id_of_retweeted_tweet=retweeted_status['id_str'],
+                    user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
+                    location=json_data['user']['location'],
+                    created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                )
+            self._store_hashtags(rt, hashtags)
 
-        return {
-                'activity_type': 'retweet',
-                'hashtags': hashtags if hashtags else None,
-                'status_id_of_retweeted_tweet': retweeted_status['id_str'],
-                'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
-                'location': json_data['user']['location'],
-                'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-            }
+            return {
+                    'activity_type': 'retweet',
+                    'hashtags': hashtags if hashtags else None,
+                    'status_id_of_retweeted_tweet': retweeted_status['id_str'],
+                    'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
+                    'location': json_data['user']['location'],
+                    'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                }
+        except Exception as e:
+            print(e)
 
     def replies_to_trump_statuses(self, json_data):
         """Logs all replies to Trump's statuses.
 
         """
-        hashtags = json_data['entities']['hashtags']
+        try:
+            hashtags = json_data['entities']['hashtags']
 
-        r = Reply.create(
-                in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
-                user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
-                location=json_data['user']['location'],
-                created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-            )
-        self._store_hashtags(r, hashtags)
+            r = Reply.create(
+                    in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
+                    user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
+                    location=json_data['user']['location'],
+                    created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                )
+            self._store_hashtags(r, hashtags)
 
-        return {
-           'activity_type': 'reply',
-           'in_reply_to_status_id_str': json_data['in_reply_to_status_id_str'],
-           'hashtags': hashtags if hashtags else None,
-           'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
-           'location': json_data['user']['location'],
-           'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-        }
+            return {
+               'activity_type': 'reply',
+               'in_reply_to_status_id_str': json_data['in_reply_to_status_id_str'],
+               'hashtags': hashtags if hashtags else None,
+               'user_id': json_data['user']['id_str'], # do not even need, just here for possible testing
+               'location': json_data['user']['location'],
+               'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+            }
+        except Exception as e:
+            print(e)
 
     def trump_statuses(self, json_data):
         """Logs all trump statuses.
 
         """
-        hashtags = json_data['entities']['hashtags']
-        is_retweet = json_data.get('retweeted_status', False)
-        if not is_retweet:
-            s = TrumpStatus.create(
-                    status_id=json_data['id_str'],
-                    created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-                    text=json_data['text']
-                )
-            self._store_hashtags(s, hashtags)
+        try:
+            hashtags = json_data['entities']['hashtags']
+            is_retweet = json_data.get('retweeted_status', False)
+            if not is_retweet:
+                s = TrumpStatus.create(
+                        status_id=json_data['id_str'],
+                        created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                        text=json_data['text']
+                    )
+                self._store_hashtags(s, hashtags)
 
-            return {
-               'activity_type': 'status',
-               'status_id': json_data['id_str'],
-               'hashtags': hashtags if hashtags else None,
-               'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
-               'text': json_data['text']
-            }
+                return {
+                   'activity_type': 'status',
+                   'status_id': json_data['id_str'],
+                   'hashtags': hashtags if hashtags else None,
+                   'created_at': datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
+                   'text': json_data['text']
+                }
+        except Exception as e:
+            print(e)
 
     def query(self):
         pass
@@ -107,19 +116,24 @@ class TwitterStreamListener(tweepy.StreamListener):
 
     def store_json_data(self, json_data_list):
         # start = time.clock()
-        db.connect()
-        trump_twitter_id = "25073877"
-        for json_data in json_data_list:
-            is_trump_activity = json_data['user']['id_str'] == trump_twitter_id
-            if is_trump_activity:
-                self.trump_twitter_analyzer.trump_statuses(json_data)
-            else:
-                is_retweet = json_data.get('retweeted_status', False)
-                if is_retweet:
-                    self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
+        try:
+            db.connect()
+            trump_twitter_id = "25073877"
+            for json_data in json_data_list:
+                is_trump_activity = json_data['user']['id_str'] == trump_twitter_id
+                if is_trump_activity:
+                    self.trump_twitter_analyzer.trump_statuses(json_data)
                 else:
-                    self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
-        db.close()
+                    is_retweet = json_data.get('retweeted_status', False)
+                    if is_retweet:
+                        self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
+                    else:
+                        self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
+        except Exception as e:
+            print(e)
+        finally:
+            db.close()
+
         # end = time.clock()
         # print("Time: ", end - start)
 
