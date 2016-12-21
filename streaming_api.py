@@ -1,7 +1,9 @@
 import tweepy
 import json
 import datetime
-from models import Retweet, Reply, Hashtag, TrumpStatus
+import multiprocessing
+import time
+from models import Retweet, Reply, Hashtag, TrumpStatus, db
 
 #https://dev.twitter.com/streaming/overview/request-parameters
 #specify these parameters as key word arguments to Tweepy
@@ -95,25 +97,40 @@ class TrumpTwitterAnalyzer:
             h.hashtag = hashtag['text']
             h.save()
 
+
 class TwitterStreamListener(tweepy.StreamListener):
 
     def __init__(self, trump_twitter_analyzer, *args, **kwargs):
         self.trump_twitter_analyzer = trump_twitter_analyzer
+        self.json_data_list = []
         super().__init__(*args, **kwargs)
+
+    def store_json_data(self, json_data_list):
+        # start = time.clock()
+        db.connect()
+        trump_twitter_id = "25073877"
+        for json_data in json_data_list:
+            is_trump_activity = json_data['user']['id_str'] == trump_twitter_id
+            if is_trump_activity:
+                self.trump_twitter_analyzer.trump_statuses(json_data)
+            else:
+                is_retweet = json_data.get('retweeted_status', False)
+                if is_retweet:
+                    self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
+                else:
+                    self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
+        db.close()
+        # end = time.clock()
+        # print("Time: ", end - start)
+
 
     def on_data(self, data):
         json_data = json.loads(data)
-
-        trump_twitter_id = "25073877"
-        is_trump_activity = json_data['user']['id_str'] == trump_twitter_id
-        if is_trump_activity:
-            self.trump_twitter_analyzer.trump_statuses(json_data)
-        else:
-            is_retweet = json_data.get('retweeted_status', False)
-            if is_retweet:
-                self.trump_twitter_analyzer.retweets_of_trump_data(json_data)
-            else:
-                self.trump_twitter_analyzer.replies_to_trump_statuses(json_data)
+        self.json_data_list.append(json_data)
+        if len(self.json_data_list) > 500:
+            p = multiprocessing.Process(target=self.store_json_data, args=(self.json_data_list[:],))
+            self.json_data_list = []
+            p.start()
 
     def on_error(self, status_code):
         print('Got an error with status code: ' + str(status_code))
