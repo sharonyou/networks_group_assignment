@@ -45,7 +45,7 @@ def populate_test_data():
               in_reply_to_status_id_str="reply status_id: " + str(i),
               user_id = "user_id: " + str(i),
               location = "location: " + str(i),
-              created_at =datetime.datetime.now())
+              created_at = datetime.datetime.now())
 
 
         rt = Retweet(
