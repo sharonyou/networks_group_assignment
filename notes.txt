@@ -1,0 +1,16 @@
+CALL THIS NODE FLIPPING NOTE OR THRESHOLD SIR
+
+This is to find the threshold for each bucket of Tweet.
+We hope to say, "for trump's foreign policy tweets, the threshold was 3", "for trump's MAGA tweets, the threshold was 6"
+-can make a histogram or a pie chart
+
+Run the following code on all the tweets, following the same 100 randomly selected users
+	To calculate a threshold:
+		-random sample 100 users that responded to trump
+		-for each user in the 100 users
+			-get the people they are following
+				-count how many of the people they are following that responded to trump by checking if their user id is in the database
+	-using the count, create a "threshold" that makes the claim "people were more likely to respond to trump if the number of the people they follow >= threshold"
+
+
+Show infections plots limited by factors
