@@ -14,6 +14,7 @@ class Retweet(Model):
 
 class Reply(Model):
     in_reply_to_status_id_str = CharField(null=True)
+    text = CharField()
     user_id = CharField()
     location = CharField(null=True)
     created_at = DateTimeField(default=datetime.datetime.now)

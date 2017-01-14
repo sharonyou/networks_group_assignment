@@ -46,6 +46,7 @@ class TrumpTwitterAnalyzer:
                     in_reply_to_status_id_str=json_data['in_reply_to_status_id_str'],
                     user_id=json_data['user']['id_str'], # do not even need, just here for possible testing
                     location=json_data['user']['location'],
+                    text=json_data['text'],
                     created_at=datetime.datetime.fromtimestamp(float(json_data['timestamp_ms'])/1000.0),
                 )
             self._store_hashtags(r, hashtags)
