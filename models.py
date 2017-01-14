@@ -1,7 +1,7 @@
 import datetime
 from peewee import *
 
-db = SqliteDatabase("trump.db")
+db = SqliteDatabase("data3.db")
 
 class Retweet(Model):
     status_id_of_retweeted_tweet = CharField()
